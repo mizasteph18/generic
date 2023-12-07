@@ -1,0 +1,624 @@
+Function smart_header(counta)
+Dim row_id As Integer
+Dim i As Integer
+Dim count As Integer
+Dim text As String
+Dim Value As Integer
+Dim flag As Boolean
+
+row_id = get_row_id(1, 1, False)
+count = 0
+text = ""
+For i = 1 To row_id
+    If Cells(i, 2) = counta Then
+        count = count + 1
+        text = text & i & ": " & Cells(i, 1) & Chr(13)
+        Value = i
+    End If
+Next
+
+If count > 1 Then
+    On Error GoTo err_exception
+        Value = InputBox("There is multiple headers possible." & Chr(13) & Chr(13) & "Choose your config id from the following list:" & Chr(13) & text, "USER CHOICE", Value)
+Else: MsgBox "Smart Header: " & Chr(13) & Chr(13) & text, vbYes, "SMART HEADER"
+End If
+
+flag = False
+For i = 1 To count
+    If Value = split(split(text, Chr(13))(i - 1), ":")(0) Then
+        smart_header = Cells(Value, 3)
+        flag = True
+    End If
+Next
+
+If flag = False Then
+    MsgBox "Please set an integer within the choice as input." & Chr(13) & Chr(13) & "The process will be terminated", vbCritical, "ERROR_2"
+    smart_header = "ERROR"
+End If
+
+Exit Function
+err_exception:
+    If err.Number = 13 Then
+        MsgBox "Please set an integer value as input." & Chr(13) & Chr(13) & "The process will be terminated", vbCritical, "ERROR_1"
+        smart_header = "ERROR"
+        Exit Function
+    End If
+    
+End Function
+Sub save_as_xlsx()
+    Dim wb As String
+    Dim wbp As String
+    
+    If ActiveWorkbook.FileFormat <> 51 Then
+        If MsgBox("Do you want to save the file in .xlsx format", vbYesNo) = vbYes Then
+        
+            wbp = ActiveWorkbook.FullName
+            wbp = Replace(wbp, ".csv", ".xlsx")
+            wb = check_active_workbook()
+    
+            Windows(wb).Activate
+            range("A1").Select
+            ActiveWorkbook.SaveAs fileName:=wbp, FileFormat:= _
+                xlOpenXMLWorkbook, CreateBackup:=False
+        End If
+    End If
+        
+End Sub
+Function check_active_workbook()
+    
+    check_active_workbook = ActiveWorkbook.name
+    
+    If check_active_workbook = "perso.xlsm" Then
+        MsgBox "This macro cannot run on workbook:" & check_active_workbook
+        Exit Function
+    'Else: MsgBox "This macro is running on workbook:" & check_active_workbook
+    End If
+
+End Function
+Sub custom_txt_to_col(Optional col_id As Integer = 1)
+
+    Columns(col_id).Select
+    Application.CutCopyMode = False
+    If get_occurrence(Cells(1, col_id), ";") > 1 Then
+        Selection.TextToColumns Destination:=Cells(1, col_id), DataType:=xlDelimited, _
+            TextQualifier:=xlDoubleQuote, ConsecutiveDelimiter:=False, Tab:=False, _
+            Semicolon:=True, Comma:=False, Space:=False, Other:=False, TrailingMinusNumbers:=True
+    ElseIf get_occurrence(Cells(1, col_id), ",") > 1 Then
+        Selection.TextToColumns Destination:=Cells(1, col_id), DataType:=xlDelimited, _
+            TextQualifier:=xlDoubleQuote, ConsecutiveDelimiter:=False, Tab:=False, _
+            Semicolon:=False, Comma:=True, Space:=False, Other:=False, TrailingMinusNumbers:=True
+    ElseIf get_occurrence(Cells(1, col_id), "|") > 1 Then
+        Selection.TextToColumns Destination:=Cells(1, col_id), DataType:=xlDelimited, _
+            TextQualifier:=xlDoubleQuote, ConsecutiveDelimiter:=False, Tab:=False, _
+            Semicolon:=False, Comma:=True, Space:=False, Other:=True, OtherChar _
+        :="|", TrailingMinusNumbers:=True
+    End If
+        
+    Selection.TextToColumns Destination:=Cells(1, col_id), DataType:=xlDelimited, _
+        TextQualifier:=xlDoubleQuote, ConsecutiveDelimiter:=False, Tab:=True, _
+        Semicolon:=False, Comma:=False, Space:=False, Other:=False, FieldInfo _
+        :=Array(1, 1), TrailingMinusNumbers:=True
+
+End Sub
+Function get_col_id(r, c, Optional backward As Boolean = False)
+    If backward = False Then
+        Cells(r, c).End(xlToRight).Select
+    Else:
+        Cells(r, 16384).End(xlToLeft).Select
+    End If
+    get_col_id = ActiveCell.Column
+    
+End Function
+
+Function get_row_id(c, r, Optional backward As Boolean = False)
+    
+    If backward = False Then
+        Cells(r, c).End(xlDown).Select
+    Else:
+        Cells(100000, c).End(xlUp).Select
+    End If
+    get_row_id = ActiveCell.Row
+    
+End Function
+
+Function get_first_word(Value, Optional sep As String = "_")
+
+    Index = InStr(Value, "_")
+    If Index > 0 Then
+        get_first_word = Left(Value, Index - 1)
+    End If
+        
+End Function
+
+Function get_occurrence(str, find)
+
+    get_occurrence = Len(str) - Len(Replace(str, find, ""))
+
+End Function
+
+Function StripSpecChars(TextToStrip As String, _
+                        Optional AllowSpaces As Boolean = True, _
+                        Optional AllowNums As Boolean = True, _
+                        Optional WhiteList As String = vbNullString, _
+                        Optional ReplacementText As String = vbNullString) As String
+
+    StripSpecChars = TextToStrip
+    
+    Dim TextLength As Long
+    TextLength = Len(TextToStrip)
+    
+    Dim i As Long
+    i = 1
+    Do While i <= TextLength
+        Dim CurrChar As String
+        CurrChar = Mid(StripSpecChars, i, 1)
+        If (CurrChar < "A" Or CurrChar > "z") And _
+           (Not IsNumeric(CurrChar) Or Not AllowNums) And _
+           (CurrChar <> " " Or Not AllowSpaces) And _
+           (Not CurrChar Like "[" & WhiteList & "]") Then
+            StripSpecChars = Left(StripSpecChars, i - 1) & ReplacementText & Right(StripSpecChars, TextLength - i)
+            TextLength = TextLength - 1 + Len(ReplacementText)
+            i = i + Len(ReplacementText)
+        Else
+            i = i + 1
+        End If
+    Loop
+
+End Function
+
+
+Function get_table_from_cell(sheet_name, dr, dc)
+
+'Tests if a Cell is within a specific range.
+
+Dim testRange As range
+Dim myRange As range
+
+'Get the cell or range that the user selected
+Set myRange = Cells(dr + 1, dc) ' for a table the header is not part of the data range
+'Set the range
+
+For Each n In Sheets(sheet_name).ListObjects
+    Set testRange = range(n.name)
+
+    'Check if the selection is inside the range.
+    If Intersect(testRange, myRange) Is Nothing Then
+        get_table_from_cell = ""
+    Else
+        get_table_from_cell = n.name
+    End If
+    
+    Exit For
+Next
+
+End Function
+
+Function is_file_open(directory As String)
+
+Dim fileNum As Integer
+Dim errNum As Integer
+
+'Allow all errors to happen
+On Error Resume Next
+fileNum = FreeFile()
+
+'Try to open and close the file for input.
+'Errors mean the file is already open
+Open directory For Input Lock Read As #fileNum
+Close fileNum
+
+'Get the error number
+errNum = err
+
+'Do not allow errors to happen
+On Error GoTo 0
+
+'Check the Error Number
+Select Case errNum
+
+    'errNum = 0 means no errors, therefore file closed
+    Case 0
+    IsFileOpen = False
+ 
+    'errNum = 70 means the file is already open
+    Case 70
+    IsFileOpen = True
+
+    'Something else went wrong
+    Case Else
+    IsFileOpen = errNum
+
+End Select
+
+End Function
+
+
+Function get_date(summit_date):
+    'MsgBox (summit_date)
+    'get_date = Format(summit_date, "yyyy-mm-dd")
+    get_date = Left(summit_date, 4) & "-" & Mid(summit_date, 5, 2) & "-" & Right(summit_date, 2)
+
+End Function
+Sub ListFilesInFolder(ByVal xFolderName As String, ByVal xIsSubfolders As Boolean)
+Dim xFileSystemObject As Object
+Dim xFolder As Object
+Dim xSubFolder As Object
+Dim xFile As Object
+Dim rowIndex As Long
+Set xFileSystemObject = CreateObject("Scripting.FileSystemObject")
+Set xFolder = xFileSystemObject.GetFolder(xFolderName)
+rowIndex = Application.ActiveSheet.range("A65536").End(xlUp).Row + 1
+For Each xFile In xFolder.Files
+  Application.ActiveSheet.Cells(rowIndex, 1).Formula = xFile.name
+  rowIndex = rowIndex + 1
+Next xFile
+If xIsSubfolders Then
+  For Each xSubFolder In xFolder.SubFolders
+    ListFilesInFolder xSubFolder.Path, True
+  Next xSubFolder
+End If
+Set xFile = Nothing
+Set xFolder = Nothing
+Set xFileSystemObject = Nothing
+End Sub
+
+Function GetFileOwner(ByVal xPath As String, ByVal xName As String)
+Dim xFolder As Object
+Dim xFolderItem As Object
+Dim xShell As Object
+xName = StrConv(xName, vbUnicode)
+xPath = StrConv(xPath, vbUnicode)
+Set xShell = CreateObject("Shell.Application")
+Set xFolder = xShell.Namespace(StrConv(xPath, vbFromUnicode))
+If Not xFolder Is Nothing Then
+  Set xFolderItem = xFolder.ParseName(StrConv(xName, vbFromUnicode))
+End If
+If Not xFolderItem Is Nothing Then
+  GetFileOwner = xFolder.GetDetailsOf(xFolderItem, 8)
+Else
+  GetFileOwner = ""
+End If
+Set xShell = Nothing
+Set xFolder = Nothing
+Set xFolderItem = Nothing
+End Function
+Sub TextFile_FindReplace(FilePath)
+'PURPOSE: Modify Contents of a text file using Find/Replace
+
+Dim TextFile As Integer
+Dim FileContent As String
+  
+'Determine the next file number available for use by the FileOpen function
+  TextFile = FreeFile
+
+'Open the text file in a Read State
+  Open FilePath For Input As TextFile
+
+'Store file content inside a variable
+  FileContent = Input(LOF(TextFile), TextFile)
+
+'Clost Text File
+  Close TextFile
+  
+'Find/Replace
+  FileContent = Replace(FileContent, "Goodbye", "Cheers")
+
+'Determine the next file number available for use by the FileOpen function
+  TextFile = FreeFile
+
+'Open the text file in a Write State
+  Open FilePath For Output As TextFile
+  
+'Write New Text data to file
+  Print #TextFile, FileContent
+
+'Close Text File
+  Close TextFile
+
+End Sub
+----PIVOT
+Sub my_pivot()
+Dim dr As Integer
+Dim dc As Integer
+Dim row_id As Long
+Dim col_id As Long
+Dim ws As String
+Dim wb As String
+
+ws = ActiveSheet.name
+wb = ActiveWorkbook.name
+
+'Do not work on perso.xlsm
+If wb = "perso.xlsm" Then
+    MsgBox "This Macro cannot work on Perso.xlsm"
+    Exit Sub
+End If
+
+'Define the range
+ActiveCell.CurrentRegion.Select
+range_address = Selection.address(ReferenceStyle:=xlR1C1)
+range_address = split(range_address, ":")
+
+If UBound(range_address) + 1 = 2 Then
+    dr = CInt(split(Replace(range_address(0), "R", ""), "C")(0))
+    dc = CInt(split(Replace(range_address(0), "R", ""), "C")(1))
+    row_id = CLng(split(Replace(range_address(1), "R", ""), "C")(0))
+    col_id = CLng(split(Replace(range_address(1), "R", ""), "C")(1))
+Else
+    MsgBox "Please select one cell of the table you want to analyse", vbCritical, "Error"
+    'MsgBox range_address(0)
+    'MsgBox range_address(1)
+    Exit Sub
+End If
+
+'df
+If Left(ws, 5) = "Sheet" Then
+    choice = MsgBox("Do you want to rename the spreadsheet?", vbYesNo)
+    If choice = vbYes Then
+        ws = InputBox("Name of the spreadsheet:", "choice")
+        ActiveSheet.name = ws
+        choice = "yes"
+    End If
+Else: choice = "no"
+End If
+
+'On Error GoTo err_range_name:
+' name of the table checking in
+existing_table = get_table_from_cell(ws, dr, dc)
+If existing_table = "" Then
+    If choice = "no" Then
+        table_name = StripSpecChars(InputBox("Name of the data Table: "), False, True, vbNullString, vbNullString)
+    Else: table_name = ws
+    End If
+    If table_name <> "" Or table_name = vbYes Then
+        table_name = LCase(table_name)
+        ActiveSheet.ListObjects.Add(xlSrcRange, Selection, , xlYes).name = table_name
+    Else: Exit Sub
+    End If
+Else: table_name = existing_table
+End If
+
+pivot_name = get_pivot_name(table_name)
+' ss_option
+choice = MsgBox("Do you want to keep the PivotTable in the same spreadsheet?", vbYesNoCancel)
+If choice = vbNo Then
+    ps = get_ss_name(ws)
+    On Error GoTo err:
+        Sheets.Add.name = ps
+        Call create_pivot(ws, ps, row_id, col_id, table_name, pivot_name, dr, dc, 1, 1)
+ElseIf choice = vbYes Then
+    If range_is_empty(Application.Union(Columns(col_id + 3), _
+                                        Columns(col_id + 4), _
+                                        Columns(col_id + 5))) = False Then
+        Columns(col_id + 3).Insert Shift:=xlToRight
+        Columns(col_id + 3).Insert Shift:=xlToRight
+        Columns(col_id + 3).Insert Shift:=xlToRight
+        Columns(col_id + 3).Insert Shift:=xlToRight
+    End If
+    Call create_pivot(ws, ws, row_id, col_id, table_name, pivot_name, dr, dc, dr, col_id + 3)
+Else:
+    Exit Sub
+End If
+
+Exit Sub
+
+err:
+ID = 1
+If err.Number = 1004 Then
+    Application.DisplayAlerts = False
+    ActiveSheet.Delete
+    Application.DisplayAlerts = True
+    MsgBox "There is already a s/s named: " & ps & ".", vbCritical, "ERROR"
+    MsgBox "2 OPTIONS:" & Chr(13) & "1- Rename the existing s/s" & Chr(13) & Chr(13) & "2- Try again and choose YES only if no existing pivot table on the right side + 2 col of the data table", vbInformation, "RECOMENDATION"
+End If
+    
+End Sub
+
+Sub create_pivot(ws, ps, row_id, col_id, table_name, pivot_name, Optional dr As Integer = 1, Optional dc As Integer = 1, Optional pr As Integer = 1, Optional pc As Integer = 1)
+Dim PRange
+Dim PSheet
+Dim DSheet
+
+Set DSheet = Worksheets(ws)
+Set PRange = DSheet.Cells(dr, dc).Resize(row_id, col_id)
+
+'DSheet.Cells(dr, dc).Resize(row_id, col_id).Select
+Set PSheet = Worksheets(ps)
+
+
+'Define Pivot Cache
+On Error GoTo err:
+    Set PCache = ActiveWorkbook.PivotCaches.create _
+    (SourceType:=xlDatabase, SourceData:=PRange). _
+    CreatePivotTable(TableDestination:=PSheet.Cells(pr, pc), _
+    TableName:=pivot_name)
+
+ActiveSheet.PivotTables(pivot_name).ChangePivotCache ActiveWorkbook. _
+        PivotCaches.create(SourceType:=xlDatabase, SourceData:=table_name, Version _
+        :=7)
+        
+ActiveSheet.PivotTables(pivot_name).RowAxisLayout xlTabularRow
+ActiveSheet.PivotTables(pivot_name).ShowDrillIndicators = False
+
+For Each pf In ActiveSheet.PivotTables(pivot_name).PivotFields
+    pf.Subtotals(1) = False
+Next
+
+PSheet.Cells(pr, pc).Select
+
+err:
+ID = 0
+If err.Number = 1004 Then
+    MsgBox "There is already a pivot table around cell: " & Cells(pr, pc).address & " on s/s " & ps & ".", vbCritical, "ERROR"
+    MsgBox "2 OPTIONS:" & Chr(13) & "1- Move the pivot table and try again" & Chr(13) & Chr(13) & "2- Try again and choose NO: the process will create the pivot table in Pivot-% s/s.", vbInformation, "RECOMENDATION"
+    ID = ID + 1
+    pivot_name = Replace(pivot_name, "p_", "")
+End If
+End Sub
+
+Function get_pivot_name(table_name)
+Dim incr As Integer
+
+pivot_name = "p_" & table_name
+
+incr = 0
+For Each St In ActiveWorkbook.Worksheets
+    For Each pt In St.PivotTables
+        If pivot_name = Left(pt, Len(pivot_name)) And Len(pt) > Len(pivot_name) Then
+            incr = Application.WorksheetFunction.Max(incr, CInt(split(pt, "_")(2)))
+        End If
+    Next
+Next
+
+get_pivot_name = pivot_name & "_" & incr + 1
+
+End Function
+
+Function range_is_empty(range)
+    If WorksheetFunction.counta(range) = 0 Then
+        range_is_empty = True
+    Else
+        range_is_empty = False
+    End If
+End Function
+
+
+Function get_ss_name(ws)
+Dim incr As Integer
+
+ss_name = "P-" & ws
+ss_name = Left(ss_name, 28) ' max is 31
+
+incr = 0
+For Each St In ActiveWorkbook.Worksheets
+    If ss_name = Left(St.name, Len(ss_name)) And Len(St.name) > Len(ss_name) Then
+        ss_split = split(St.name, "_")
+        incr = Application.WorksheetFunction.Max(incr, CInt(ss_split(UBound(ss_split))))
+    End If
+Next
+
+get_ss_name = ss_name & "_" & incr + 1
+   
+End Function
+
+
+Sub xml_to_csv()
+Dim fd As Office.FileDialog
+Dim xml_dir As String
+Dim csv_dir As String
+Dim directory As String
+Dim file_name As String
+Dim run_option
+Dim extension As String
+
+Set fd = Application.FileDialog(msoFileDialogFilePicker)
+
+Application.DisplayAlerts = False
+
+run_option = MsgBox("Click 'Yes' if you want to save the export in .xlsx format" & Chr(13) & Chr(13) & "Click 'No' if you want to save the export in .csv format", vbYesNoCancel, "SAVE AS Option")
+If run_option = vbYes Then
+    extension = ".xlsx"
+    run_option = xlOpenXMLWorkbook
+ElseIf run_option = vbNo Then
+    extension = ".csv"
+    run_option = xlCSV
+Else: Exit Sub
+End If
+
+On Error GoTo exception
+With fd
+    .Filters.Clear
+    .Filters.Add "XML Files", "*.xml", 1
+    .Title = "Choisissez les Fichiers a transformer:"
+    .AllowMultiSelect = True
+    
+    .InitialFileName = "H:\"
+    
+    If .Show = True Then
+        For i = 1 To .SelectedItems.count
+            xml_dir = .SelectedItems(i)
+            
+            ' user may create dedicated folder (only ask at the beginning of the process
+            directory = Left(xml_dir, InStrRev(xml_dir, "\"))
+            If i = 1 Then
+                user_choice = pool_folder(directory)
+            End If
+            
+            ' Directory chnaged acording to user choice
+            If user_choice Then
+                file_name = "xml_to_csv\" & Right(xml_dir, Len(xml_dir) - InStrRev(xml_dir, "\"))
+            Else: file_name = Right(xml_dir, Len(xml_dir) - InStrRev(xml_dir, "\"))
+            End If
+            
+            ' Process will open the xml in excel and save it acording to the user choice
+            MsgBox "Handling: " & Chr(13) & file_name
+            If InStr(1, file_name, ".xml") - 1 = Len(file_name) - 4 Then
+                file_name = Replace(file_name, ".xml", extension)
+            Else:
+                MsgBox ("XML directory shouldn't contains '.xml' string outside the extension itself")
+                ' ex \my_file_name.xml.xml => there is .xml inside the directory in addition to the extension
+                Exit Sub
+            End If
+            Workbooks.OpenXML fileName:=xml_dir, LoadOption:=xlXmlLoadImportToList
+            csv_dir = directory & file_name
+            ActiveWorkbook.SaveAs fileName:=csv_dir, FileFormat:=run_option, CreateBackup:=False
+        Next
+    End If
+End With
+
+'    ActiveWorkbook.SaveAs fileName:= _
+'        "H:\05_Enslavement\05_INFLA_RECALIB\04_New_Architecture\HOFRSCEN#Ir_20220531.xlsx" _
+'        , FileFormat:=xlOpenXMLWorkbook, CreateBackup:=False
+
+
+Application.DisplayAlerts = True
+
+Exit Sub
+exception:
+If err.Number = 1004 Then
+    MsgBox "The file name already exists in below directory:" & Chr(13) & csv_dir & Chr(13) _
+            & Chr(13) & "The process will not save the .csv file.", vbInformation, "ERROR - 1004"
+    Resume Next
+End If
+
+End Sub
+
+Function pool_folder(directory)
+Dim user_choice
+
+On Error GoTo exception
+user_choice = MsgBox("Do you want to put your file(s) in a dedicated folder?", vbYesNo, "Choice")
+If user_choice = vbYes Then
+    'user_choice =  InputBox("Please enter your folder Name", "FOLDER NAME")
+    MkDir directory & "\xml_to_csv"
+    pool_folder = True
+Else: pool_folder = False
+End If
+
+Exit Function
+exception:
+If err.Number = 75 Then
+    'MsgBox "The specified folder already exists", vbInformation, "ERROR - 75"
+    pool_folder = True
+End If
+
+End Function
+
+
+Function CheckFileExists(DirFile)
+Dim strFileExists As String
+
+    strFileExists = dir(DirFile)
+    
+    If strFileExists = "" Then
+        CheckFileExists = False
+    Else
+        CheckFileExists = True
+    End If
+    
+End Function
+
+
+
+
+
