@@ -1,9 +1,9 @@
 from datetime import date, timedelta
 import calendar
 
-def get_past_dates(frequency, detail):
+def get_sliding_year_dates(frequency, detail):
     today = date.today()
-    one_year_ago = today - timedelta(days=365)
+    start_date = date(today.year - 1, today.month, today.day)  # Same day last year
     dates_list = []
 
     if frequency.lower() == "weekly":
@@ -14,20 +14,21 @@ def get_past_dates(frequency, detail):
         if detail not in days:
             return f"Invalid day name: {detail}. Please enter a valid day."
 
-        # Find the most recent occurrence of the given day
-        while today.weekday() != days[detail]:
-            today -= timedelta(days=1)
+        # Find the closest previous occurrence of the given day from last year's date
+        while start_date.weekday() != days[detail]:
+            start_date += timedelta(days=1)
 
-        # Collect all occurrences within the past year
-        while today >= one_year_ago:
-            dates_list.append(today)
-            today -= timedelta(days=7)
+        # Collect all occurrences within the sliding year range
+        while start_date <= today:
+            dates_list.append(start_date)
+            start_date += timedelta(days=7)
 
     elif frequency.lower() == "monthly":
         if detail.lower() == "last business day":
-            # Find last business day of each month
-            for month in range(1, 13):
-                last_day = date(today.year - 1, month, calendar.monthrange(today.year - 1, month)[1])
+            # Find last business day of each month within the sliding year range
+            for month in range(start_date.month, today.month + 1):
+                year = start_date.year if month >= start_date.month else start_date.year + 1
+                last_day = date(year, month, calendar.monthrange(year, month)[1])
                 while last_day.weekday() in [5, 6]:  # Skip weekends
                     last_day -= timedelta(days=1)
                 dates_list.append(last_day)
@@ -37,9 +38,10 @@ def get_past_dates(frequency, detail):
                 if specific_day < 1 or specific_day > 31:
                     return "Invalid day of the month. Enter a number between 1 and 31."
 
-                for month in range(1, 13):
+                for month in range(start_date.month, today.month + 1):
+                    year = start_date.year if month >= start_date.month else start_date.year + 1
                     try:
-                        dates_list.append(date(today.year - 1, month, specific_day))
+                        dates_list.append(date(year, month, specific_day))
                     except ValueError:
                         pass  # Skip invalid dates (e.g., Feb 30)
             except ValueError:
@@ -53,5 +55,5 @@ def get_past_dates(frequency, detail):
 # Example usage
 freq = input("Enter frequency (Weekly/Monthly): ").title()
 detail = input("Enter the specific day (e.g., 'Friday' for weekly, 'Last Business Day' or a number for monthly): ").title()
-past_dates = get_past_dates(freq, detail)
-print(past_dates)
+sliding_dates = get_sliding_year_dates(freq, detail)
+print(sliding_dates)
